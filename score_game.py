@@ -30,7 +30,7 @@ def train_points(df, scores):
     - df (pd.DataFrame): DataFrame containing train information.
     - scores (dict): Dictionary to store and update scores for each color.
     """
-    for color in scores.keyss():
+    for color in scores.keys():
         score = df[df['color']==color]['points'].sum()
         scores[color] += score
         print_train_point_scores(color, score)
