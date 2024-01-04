@@ -45,7 +45,7 @@ def print_longest_route_scores(max_keys, longest_roads):
     """
     print("-----------------------------------")
     if len(max_keys) > 1:
-        print("The longest route winners are: " + ", ".join([f"{color.capitalize()}" for color in max_keys]) + " with " + str(longest_roads[max_keys][0]) + " roads!")
+        print("The longest route winners are: " + ", ".join([f"{color.capitalize()}" for color in max_keys]) + " with " + str(longest_roads[max_keys[0]]) + " roads!")
     else:
         print("Longest route winner is " + max_keys[0] + " with " + str(longest_roads[max_keys[0]]) + " consectutive trains!")
 
@@ -259,8 +259,9 @@ def destination_tickets(train_df, station_df, all_destination_tickets_df, all_co
             score, num_tickets_completed = 0, 0
             current_all_best_completed, current_all_best_failed = [], []
 
-            for start, end in tickets[color]:
+            for ticket_name in tickets[color]:
                 # Set up inputs so they can be compared to items in csv
+                start, end = ticket_name.split(' ')
                 start = start.lower().capitalize()
                 end = end.lower().capitalize()
 
@@ -329,73 +330,6 @@ def remaining_stations(station_df, scores):
         print_remaining_station_scores(color, num_used_stations, score)
         
     return num_stations_left_dict
-
-
-def get_user_destination_tickets(color, tickets, num_tickets, all_cities, all_destination_tickets):
-    """
-    Get the destination tickets through for a specific color using input from the user.
-
-    Parameters:
-    - color (str): The color for which destination tickets are input.
-    - tickets (dict): Dictionary to store destination tickets for each color.
-    - num_tickets (int): The number of destination tickets to be input.
-    - all_cities (set): Set of all valid cities.
-    - all_destination_tickets (set): Set of all valid destination tickets.
-
-    Returns:
-    - tickets (dict): Updated dictionary containing user-input destination tickets for the specified color.
-    """
-    for i in range(num_tickets):
-        start, end = "", ""
-
-        # Keep asking for valid tickets provided destination card doesn't exist
-        while (start, end) not in all_destination_tickets and (end, start) not in all_destination_tickets:
-            start, end = "", ""
-            while start not in all_cities: # Keep asking for valid city provided city doesn't exist
-                start = input(f"Enter the starting city for destination ticket {i + 1} (no special characters): ").lower().capitalize()
-                if start not in all_cities:
-                    print(start + " is not a valid city. Try again!")
-            while end not in all_cities:             # Keep asking for valid city provided city doesn't exist
-                end = input(f"Enter the ending city for destination ticket {i + 1} (no special characters): ").lower().capitalize()
-                if end not in all_cities:
-                    print(end + " is not a valid city. Try again!")
-            if (start, end) not in all_destination_tickets and (end, start) not in all_destination_tickets:
-                print(start + " and " + end + " do not form a valid destination ticket (order does NOT matter).")
-        tickets[color].append((start, end))
-    return tickets
-
-def get_all_user_destination_tickets(scores, all_cities_df, all_destination_tickets_df):
-    """
-    Get all destination tickets input by the user for each color.
-    Calls the helper method get_user_destination_tickets() to get an individual colors input desintation tickets.
-
-    Parameters:
-    - scores (dict): Dictionary to store scores for each color.
-    - all_cities_df (pd.DataFrame): DataFrame containing information about all cities.
-    - all_destination_tickets_df (pd.DataFrame): DataFrame containing information about all destination tickets.
-
-    Returns:
-    - tickets (dict): Dictionary mapping colors to their respective destination tickets.
-    """
-    tickets = {}
-    all_destination_tickets = set(zip(all_destination_tickets_df['Source'], all_destination_tickets_df['Target']))
-    all_cities = set(all_cities_df['City'])
-    for color in COLORS:
-        player_num_tickets = ""
-        # Error handling for integer input
-        while not player_num_tickets.isdigit():
-            player_num_tickets = input("How many desination tickets does " + color + " have?")
-            if not player_num_tickets.isdigit():
-                print("Input must be a number! Try again")
-        player_num_tickets = int(player_num_tickets)
-        if player_num_tickets > 0:
-            # Initialize data
-            tickets[color] = []
-            scores[color] = 0
-
-            # Ask for which destination tickets
-            get_user_destination_tickets(color, tickets, player_num_tickets, all_cities, all_destination_tickets)
-    return tickets
 
 
 def print_final_scores_and_winner(scores, num_tickets_completed_dict, num_stations_left_dict, longest_route_winner):
@@ -470,20 +404,16 @@ def create_clear_dir(directory_path):
                 print(f"Failed to delete {file_path}. Reason: {e}")
 
 
-if __name__ == "__main__":
+def score_board(file_path, tickets):
     """
     Main execution block to process and score the Ticket to Ride game.
     """
-    # Get game file path from user
-    try:
-        image_path = input("Enter the path to the cropped board image: ")
+    image_path = file_path
+    scores = {}
 
-        if os.path.exists(image_path) and os.path.isfile(image_path):
-            print(f"Image path: {image_path}")
-        else:
-            raise FileNotFoundError(f"The file '{image_path}' does not exist.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    for color, ticks in tickets.items():
+        if len(ticks):
+            scores[color] = 0
 
     # Files to store game data
     train_dir = 'unlabeled_data/train_data/real_game_train_spots1'
@@ -496,15 +426,9 @@ if __name__ == "__main__":
     # Extract images from game to find trains
     extract_images(image_path, station_output=station_dir, train_output=train_dir)
 
-    scores = {}
-
     # Prepare to access all needed CSV files
-    all_cities_df = pd.read_csv('game_data/cities.csv')
     all_destination_tickets_df = pd.read_csv('game_data/destinations.csv')
     all_connections_df = pd.read_csv('game_data/routes.csv')
-
-    # Get destination tickets from user input
-    tickets = get_all_user_destination_tickets(scores, all_cities_df, all_destination_tickets_df)
 
     # Create the game state using the best models
     train_model = 'models/train_spot_classifiers/trained_train_model_07.pth'
@@ -527,3 +451,4 @@ if __name__ == "__main__":
     # Clear the game data so another game can be processed.
     create_clear_dir(train_dir)
     create_clear_dir(station_dir)
+
